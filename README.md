@@ -92,7 +92,7 @@ EXEC sp_add_job @job_name = 'Load Pool Credito';
 
 The dashboard provides insights such as:
 
-###🔍 Key Metrics
+### 🔍 Key Metrics
 
 Orders in pool
 
@@ -104,7 +104,7 @@ Average release time
 
 Average cancellation time
 
-###📈 Analysis
+### 📈 Analysis
 
 Trends over time
 
@@ -114,7 +114,7 @@ Performance by user (who releases orders)
 
 Pool aging (time in queue)
 
-###🔄 Auto Refresh
+### 🔄 Auto Refresh
 
 The dashboard connects directly to pool_credito and refreshes automatically based on a scheduled interval (to be defined).
 
@@ -138,7 +138,7 @@ README.md
 
 --- 
 
-##🧠 Technical Decisions
+## 🧠 Technical Decisions
 
 Used Linked Server + OPENQUERY for cross-system integration
 
