@@ -86,11 +86,13 @@ A SQL Server Agent Job is used to automate the pipeline:
 ---sql
 EXEC sp_add_job @job_name = 'Load Pool Credito';
 
-📊 Power BI Dashboard
+---
+
+## 📊 Power BI Dashboard
 
 The dashboard provides insights such as:
 
-🔍 Key Metrics
+###🔍 Key Metrics
 
 Orders in pool
 
@@ -102,7 +104,7 @@ Average release time
 
 Average cancellation time
 
-📈 Analysis
+###📈 Analysis
 
 Trends over time
 
@@ -112,11 +114,13 @@ Performance by user (who releases orders)
 
 Pool aging (time in queue)
 
-🔄 Auto Refresh
+###🔄 Auto Refresh
 
 The dashboard connects directly to pool_credito and refreshes automatically based on a scheduled interval (to be defined).
 
-📁 Project Structure
+---
+
+## 📁 Project Structure
 /sql
   ├── create_view.sql
   ├── create_table.sql
@@ -132,7 +136,9 @@ The dashboard connects directly to pool_credito and refreshes automatically base
 
 README.md
 
-🧠 Technical Decisions
+--- 
+
+##🧠 Technical Decisions
 
 Used Linked Server + OPENQUERY for cross-system integration
 
@@ -144,9 +150,9 @@ Layered architecture (view → table → BI)
 
 Automated pipeline using SQL Server Agent
 
+---
 
-
-🛠️ Tech Stack
+## 🛠️ Tech Stack
 
 SQL Server
 
