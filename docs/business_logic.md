@@ -21,3 +21,15 @@
 
 - minutos_liberacion
 - minutos_cancelacion
+
+- # Data Quality
+
+## Known Issues
+
+Data before 2026-03-10 contains incorrect classification.
+
+## Solution
+
+Filtered at extraction layer:
+
+WHERE creado_en >= '2026-03-10'
