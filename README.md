@@ -83,7 +83,7 @@ Process:
 ### 4. Automation
 A SQL Server Agent Job is used to automate the pipeline:
 
-```sql
+---sql
 EXEC sp_add_job @job_name = 'Load Pool Credito';
 
 📊 Power BI Dashboard
