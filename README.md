@@ -12,7 +12,7 @@ The pipeline:
 ---
 
 ## 🏗️ Architecture
-MySQL (CiosaCOM)
+MariaDB (CiosaCOM)
         │
         ▼
 OPENQUERY (Linked Server)
