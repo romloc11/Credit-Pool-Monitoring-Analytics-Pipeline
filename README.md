@@ -122,18 +122,18 @@ The dashboard connects directly to pool_credito and refreshes automatically base
 
 ## 📁 Project Structure
 /sql
-  ├── create_view.sql
-  ├── create_table.sql
-  ├── load_data.sql
-  ├── job.sql
-
+├── create_view.sql
+├── create_table.sql
+├── load_data.sql
+├── job.sql
+|
 /powerbi
-  ├── pool_credito_dashboard.pbix
-
+├── pool_credito_dashboard.pbix
+|
 /docs
-  ├── data_model.png
-  ├── process_flow.png
-
+├── data_model.png
+├── process_flow.png
+|
 README.md
 
 --- 
