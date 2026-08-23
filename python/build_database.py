@@ -1,10 +1,10 @@
 """
-Ejecuta el pipeline SQL (bronze -> silver -> gold) contra un archivo
-DuckDB local, un script a la vez y en orden.
+Runs the SQL pipeline (bronze -> silver -> gold) against a local DuckDB
+file, one script at a time and in order.
 
-Se corre paso a paso (no todo en una sola conexion sin feedback) para
-poder aislar en que capa truena algo si algo truena, en vez de recibir
-un solo error generico al final.
+Run step by step (not all in a single connection with no feedback) so
+that if something breaks, we can isolate which layer broke it, instead
+of getting one generic error at the end.
 """
 
 import sys
@@ -32,7 +32,7 @@ def main() -> None:
             carpeta = Path("sql") / capa
             scripts = sorted(carpeta.glob("*.sql"))
             if not scripts:
-                print(f"[{capa}] sin scripts, se omite")
+                print(f"[{capa}] no scripts, skipping")
                 continue
             print(f"[{capa}]")
             for script in scripts:
@@ -40,7 +40,7 @@ def main() -> None:
     finally:
         con.close()
 
-    print(f"\nListo. Base de datos: {DB_PATH}")
+    print(f"\nDone. Database: {DB_PATH}")
 
 
 if __name__ == "__main__":

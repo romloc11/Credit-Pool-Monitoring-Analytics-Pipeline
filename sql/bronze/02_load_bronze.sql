@@ -1,7 +1,7 @@
--- Carga cruda: un COPY por tabla, sin transformar nada.
--- Las columnas destino ya son VARCHAR (ver 01_create_bronze_tables.sql),
--- asi que DuckDB carga el texto tal cual llega, sin inferir tipos por
--- su cuenta -- la unica fuente de verdad sobre tipos es silver.
+-- Raw load: one COPY per table, no transformation.
+-- The destination columns are already VARCHAR (see
+-- 01_create_bronze_tables.sql), so DuckDB loads the text as-is, without
+-- inferring types on its own -- silver is the only source of truth on types.
 
 COPY bronze.pedidos_pool_clientes
 FROM 'data/bronze/pedidos_pool_clientes.csv' (HEADER TRUE);

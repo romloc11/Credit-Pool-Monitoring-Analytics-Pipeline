@@ -1,7 +1,7 @@
--- Bronze: estructura identica a lo que entrega el sistema origen.
--- Todo se guarda como texto a proposito. Bronze no decide tipos ni
--- corrige nada -- esa responsabilidad es de silver. Si algo llega mal
--- formado del origen, aqui debe seguir viendose mal formado.
+-- Bronze: structure identical to what the source system delivers.
+-- Everything is stored as text on purpose. Bronze doesn't decide types or
+-- fix anything -- that responsibility belongs to silver. If something
+-- arrives malformed from the source, it should still look malformed here.
 
 CREATE SCHEMA IF NOT EXISTS bronze;
 

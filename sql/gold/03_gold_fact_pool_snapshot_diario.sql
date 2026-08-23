@@ -1,10 +1,10 @@
 -- Gold: fact_pool_snapshot_diario
--- Grano: un dia. Esta es la tabla que reemplaza al TRUNCATE + INSERT
--- del diseno original -- en vez de sobreescribir el estado del pool
--- en cada carga (perdiendo la foto de dias anteriores), aqui se
--- reconstruye una fila por dia con el estado del pool tal como se
--- veia ese dia. En produccion esta misma logica correria una vez al
--- dia, agregando la fila de "hoy" (INSERT, nunca TRUNCATE).
+-- Grain: one day. This is the table that replaces the original design's
+-- TRUNCATE + INSERT -- instead of overwriting the pool's state on every
+-- load (losing the snapshot of previous days), this rebuilds one row
+-- per day with the pool's state as it looked that day. In production
+-- this same logic would run once a day, appending "today's" row
+-- (INSERT, never TRUNCATE).
 
 CREATE OR REPLACE TABLE gold.fact_pool_snapshot_diario AS
 
@@ -28,10 +28,10 @@ cancelados AS (
     GROUP BY 1
 ),
 
--- estado_al_cierre: para cada dia del calendario, que pedidos ya
--- habian entrado al pool y todavia no se habian resuelto al cierre
--- de ese dia (si se libero o cancelo el mismo dia, ya no cuenta como
--- abierto al cierre).
+-- estado_al_cierre: for each calendar day, which orders had already
+-- entered the pool and were still unresolved at that day's close (if
+-- it was released or canceled the same day, it no longer counts as
+-- open at close).
 estado_al_cierre AS (
     SELECT
         cal.fecha,

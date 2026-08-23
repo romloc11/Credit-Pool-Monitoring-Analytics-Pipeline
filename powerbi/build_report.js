@@ -1,12 +1,12 @@
 "use strict";
 /**
- * Genera el proyecto PBIP (PoolCredito.Report + PoolCredito.pbip) a partir
- * del diseño acordado para el reporte. Determinista: correr de nuevo produce
- * el mismo reporte (salvo los IDs, que son aleatorios pero no afectan el
- * resultado visual).
+ * Generates the PBIP project (PoolCredito.Report + PoolCredito.pbip) from
+ * the agreed report design. Deterministic: running it again produces the
+ * same report (except for the IDs, which are random but don't affect the
+ * visual result).
  *
- * El modelo semantico (PoolCredito.SemanticModel) ya existe -- este script
- * solo escribe la carpeta de Reporte y el .pbip que lo referencia.
+ * The semantic model (PoolCredito.SemanticModel) already exists -- this
+ * script only writes the Report folder and the .pbip that references it.
  */
 
 const fs = require("fs");
@@ -33,7 +33,7 @@ const REPORT_EXTENSION_SCHEMA =
   "https://developer.microsoft.com/json-schemas/fabric/item/report/definitionProperties/1.0.0/schema.json";
 
 // ---------------------------------------------------------------------------
-// utilidades
+// utilities
 // ---------------------------------------------------------------------------
 
 function id20() {
@@ -59,21 +59,20 @@ function solid(hex) {
   return { solid: { color: { expr: { Literal: { Value: `'${hex}'` } } } } };
 }
 function solidPlain(hex) {
-  // encoding usado dentro de gradientes / stops (sin "expr" envolvente)
+  // encoding used inside gradients / stops (no wrapping "expr")
   return { Literal: { Value: `'${hex}'` } };
 }
 
 // ---------------------------------------------------------------------------
-// geometria: grid de 12x12 -> pixeles. la banda superior (fila 1) tiene una
-// altura fija de 80px (para que los slicers en modo Dropdown quepan sin
-// recortarse); el resto del contenido (filas 2-13) reparte el espacio
-// restante en partes iguales.
+// geometry: 12x12 grid -> pixels. The top band (row 1) has a fixed height
+// of 80px (so Dropdown-mode slicers fit without clipping); the rest of the
+// content (rows 2-13) splits the remaining space evenly.
 // ---------------------------------------------------------------------------
 
 const CANVAS = { width: 1920, height: 1080, margin: 32, gutter: 24 };
 const HEADER_BAND_H = 80;
 const COLS = 12;
-const CONTENT_ROWS = 11; // filas 2..13
+const CONTENT_ROWS = 11; // rows 2..13
 
 const colWidth = (CANVAS.width - 2 * CANVAS.margin) / COLS;
 const contentTop = CANVAS.margin + HEADER_BAND_H + CANVAS.gutter;
@@ -97,7 +96,7 @@ function rect(c1, r1, c2, r2) {
 }
 
 // ---------------------------------------------------------------------------
-// expresiones de campo
+// field expressions
 // ---------------------------------------------------------------------------
 
 function colExpr(entity, property) {
@@ -124,7 +123,7 @@ function projMeasure(entity, property) {
 }
 
 // ---------------------------------------------------------------------------
-// constructor base de visual
+// base visual constructor
 // ---------------------------------------------------------------------------
 
 function baseVisual(name, position, z, tabOrder) {
@@ -145,7 +144,7 @@ function hiddenHeaderVCO(extra) {
 }
 
 // ---------------------------------------------------------------------------
-// paginas / visuales acumulados por el script
+// pages / visuals accumulated by the script
 // ---------------------------------------------------------------------------
 
 const pages = []; // { id, displayName, visuals: [visual...], order }
@@ -162,7 +161,7 @@ function addVisual(page, visual) {
 }
 
 // ---------------------------------------------------------------------------
-// builders de visuales concretos
+// concrete visual builders
 // ---------------------------------------------------------------------------
 
 let zCounter = 1000;
@@ -273,12 +272,12 @@ function cardNeutral(rectXY, entity, measure, accentHex, labelText) {
   return v;
 }
 
-/** card de dos valores (numero + etiqueta de estado en texto) con semaforo
- *  dinamico via Conditional.Cases sobre accentBar.color y value.fontColor.
- *  no se sobreescribe el label -- cardVisual aplica el mismo texto de label
- *  a todas las proyecciones del card, asi que forzar un texto fijo duplica
- *  la misma etiqueta en las dos mini-tarjetas. se deja el nombre de medida
- *  por defecto en cada una, que ya es distinto y suficientemente claro. */
+/** two-value card (number + status label in text) with a dynamic traffic
+ *  light via Conditional.Cases over accentBar.color and value.fontColor.
+ *  the label isn't overridden -- cardVisual applies the same label text to
+ *  every projection in the card, so forcing a fixed text would duplicate
+ *  the same label on both mini-cards. Each one keeps its default measure
+ *  name, which is already distinct and clear enough. */
 function cardSemaphore(rectXY, entity, measure, estadoMeasure, thresholds) {
   const v = baseVisual(id20(), rectXY, nextZ(), nextZ());
   const cond = {
@@ -595,20 +594,19 @@ function slicerDropdown(rectXY, entity, column, headerText, syncGroupName) {
 }
 
 // ---------------------------------------------------------------------------
-// PAGINA 1 -- El backlog del pool crece mas rapido de lo que se libera
+// PAGE 1 -- El backlog del pool crece mas rapido de lo que se libera
 // ---------------------------------------------------------------------------
 
 const page1 = newPage("El backlog del pool crece mas rapido de lo que se libera");
 
-// header + filtro (fila 1)
-// nota: en esta pagina solo se expone el segmentador de Mes -- es el
-// unico que filtra los 8 visuales de forma consistente. Analista y
-// Motivo se probaron aqui y se quitaron: los 4 KPI + las 4 lineas de
-// tendencia salen de la tabla de snapshot diario (Historial Diario del
-// Pool), que no tiene desglose por analista ni motivo (un pedido
-// abierto todavia no tiene analista asignado -- no es una limitacion
-// de diseno, es un hecho del negocio). Analista y Motivo se quedan en
-// la pagina 2, donde el modelo si los soporta por completo.
+// header + filter (row 1)
+// note: this page only exposes the Month slicer -- it's the only one that
+// filters all 8 visuals consistently. Analyst and Reason were tried here
+// and removed: the 4 KPIs + the 4 trend lines come from the daily snapshot
+// table (Historial Diario del Pool), which has no breakdown by analyst or
+// reason (an order that's still open doesn't have an analyst assigned yet
+// -- that's not a design limitation, it's a fact of the business). Analyst
+// and Reason live on page 2, where the model fully supports them.
 addVisual(
   page1,
   textboxTitle(rect(1, 1, 9, 2), "El backlog del pool crece mas rapido de lo que se libera", {
@@ -623,7 +621,7 @@ addVisual(
   addVisual(page1, slicerDropdown({ x: snap8(region.x), y: region.y, width: w, height: 80 }, "Calendario", "Nombre Mes", "Mes", "MesSync"));
 }
 
-// kpis (filas 2-4) -- 4 tarjetas
+// kpis (rows 2-4) -- 4 cards
 {
   const region = rect(1, 2, 13, 4);
   const gap = 24;
@@ -672,7 +670,7 @@ addVisual(
   );
 }
 
-// hero (filas 4-8) -- 4 mini lineas sincronizadas en el mismo eje de fechas
+// hero (rows 4-8) -- 4 mini lines synced on the same date axis
 {
   const region = rect(1, 4, 13, 8);
   const gap = 24;
@@ -729,7 +727,7 @@ addVisual(
   );
 }
 
-// detalle (filas 8-13): motivo de bloqueo (izq) + pedidos mas antiguos (der)
+// detail (rows 8-13): block reason (left) + oldest orders (right)
 {
   const bl = rect(1, 8, 7, 13);
   const br = rect(7, 8, 13, 13);
@@ -761,15 +759,15 @@ addVisual(
     howCreated: "User",
   };
 
-  // nota: se probaron 3 variantes de esta tabla incluyendo la medida
-  // "Dias en Pool al Cierre de Datos" (que hace CALCULATE(MAX(...),
-  // REMOVEFILTERS('Calendario')) puertas adentro) como columna -- con
-  // filtro, sin filtro, ordenando por la medida y ordenando por otra
-  // columna. Las 3 fallaron igual en Desktop con un error generico de
-  // "capacidad o licencia". La medida era la unica constante en las 3,
-  // asi que se saco de esta tabla -- se usa la columna de fecha de
-  // creacion en su lugar, que logra el mismo propósito (mas viejo
-  // primero) sin el problema.
+  // note: 3 variants of this table were tried, including the
+  // "Dias en Pool al Cierre de Datos" measure (which does
+  // CALCULATE(MAX(...), REMOVEFILTERS('Calendario')) under the hood) as a
+  // column -- with filter, without filter, sorting by the measure, and
+  // sorting by another column. All 3 failed the same way in Desktop with a
+  // generic "capacity or license" error. The measure was the only constant
+  // across all 3, so it was pulled out of this table -- the creation date
+  // column is used instead, which achieves the same purpose (oldest
+  // first) without the problem.
   addVisual(
     page1,
     tableExBuilder(
@@ -789,12 +787,12 @@ addVisual(
 }
 
 // ---------------------------------------------------------------------------
-// PAGINA 2 -- Desempeno de analistas y antiguedad de los pedidos abiertos
+// PAGE 2 -- Desempeno de analistas y antiguedad de los pedidos abiertos
 // ---------------------------------------------------------------------------
 
 const page2 = newPage("Desempeno de analistas y antiguedad de los pedidos abiertos");
 
-// header + filtros (fila 1)
+// header + filters (row 1)
 addVisual(page2, textboxTitle(rect(1, 1, 9, 2), "Desempeno de analistas y antiguedad de los pedidos abiertos", { fontSize: "22px" }));
 {
   const region = rect(9, 1, 13, 2);
@@ -808,7 +806,7 @@ addVisual(page2, textboxTitle(rect(1, 1, 9, 2), "Desempeno de analistas y antigu
   addVisual(page2, slicerDropdown({ x: snap8(x3), y: region.y, width: w, height: 80 }, "Calendario", "Nombre Mes", "Mes", "MesSync"));
 }
 
-// hero (filas 2-6)
+// hero (rows 2-6)
 addVisual(
   page2,
   barChartH(
@@ -823,7 +821,7 @@ addVisual(
   )
 );
 
-// soporte (filas 6-9): 3 paneles
+// support (rows 6-9): 3 panels
 {
   const supp1 = rect(1, 6, 5, 9);
   const supp2 = rect(5, 6, 9, 9);
@@ -857,7 +855,7 @@ addVisual(
     )
   );
 
-  // supp3: 2 cards de calidad de dato, lado a lado
+  // supp3: 2 data-quality cards, side by side
   const gap = 16;
   const cw = Math.floor((supp3.width - gap) / 2);
   addVisual(
@@ -882,7 +880,7 @@ addVisual(
   );
 }
 
-// detalle (filas 9-13)
+// detail (rows 9-13)
 addVisual(
   page2,
   tableExBuilder(
@@ -900,7 +898,7 @@ addVisual(
 );
 
 // ---------------------------------------------------------------------------
-// escritura a disco: paginas + visuales
+// write to disk: pages + visuals
 // ---------------------------------------------------------------------------
 
 ensureDir(PAGES_DIR);
@@ -936,7 +934,7 @@ writeJson(path.join(PAGES_DIR, "pages.json"), {
 });
 
 // ---------------------------------------------------------------------------
-// theme.json -- Analyst Workbench (claro, denso, serio)
+// theme.json -- Analyst Workbench (light, dense, serious)
 // ---------------------------------------------------------------------------
 
 const THEME_NAME = "AnalystWorkbench-7f2c19e4";
@@ -1060,5 +1058,5 @@ writeJson(path.join(ROOT, "PoolCredito.pbip"), {
   settings: { enableAutoRecovery: true },
 });
 
-console.log(`Reporte generado: ${pages.length} paginas, ${pages.reduce((n, p) => n + p.visuals.length, 0)} visuales.`);
-for (const p of pages) console.log(`  - ${p.displayName} (${p.id}): ${p.visuals.length} visuales`);
+console.log(`Report generated: ${pages.length} pages, ${pages.reduce((n, p) => n + p.visuals.length, 0)} visuals.`);
+for (const p of pages) console.log(`  - ${p.displayName} (${p.id}): ${p.visuals.length} visuals`);

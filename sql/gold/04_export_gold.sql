@@ -1,6 +1,6 @@
--- Exporta las tablas gold a CSV para que Power BI las importe
--- directamente, sin depender de un driver de DuckDB instalado en la
--- maquina de quien clone el repo.
+-- Exports the gold tables to CSV so Power BI can import them directly,
+-- with no dependency on a DuckDB driver installed on the machine of
+-- whoever clones the repo.
 
 COPY gold.dim_cliente              TO 'data/gold/dim_cliente.csv' (HEADER, DELIMITER ',');
 COPY gold.dim_analista             TO 'data/gold/dim_analista.csv' (HEADER, DELIMITER ',');

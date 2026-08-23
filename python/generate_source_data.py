@@ -1,16 +1,15 @@
 """
-Genera datos de origen sinteticos que simulan el sistema transaccional
-(pedidos_pool_clientes, estatus_pool, vendedores) del que originalmente
-se extraia via OPENQUERY/Linked Server.
+Generates synthetic source data that simulates the transactional system
+(pedidos_pool_clientes, estatus_pool, vendedores) it was originally
+extracted from via OPENQUERY/Linked Server.
 
-El dataset real de la empresa no puede publicarse. Este generador crea
-un dataset con la misma estructura y las mismas inconsistencias que
-tenia el dato real (usuarios con formato libre, estatus fuera de
-catalogo en un rango de fechas, pedidos aun sin resolver), para que
-las capas silver/gold tengan trabajo real de limpieza que hacer y no
-sean solo una copia del origen.
+The company's real dataset can't be published. This generator creates
+a dataset with the same structure and the same inconsistencies the real
+data had (freely formatted usernames, out-of-catalog status in a date
+range, orders still unresolved), so the silver/gold layers have real
+cleaning work to do instead of just being a copy of the source.
 
-Semilla fija -> mismo dataset en cada corrida (reproducible).
+Fixed seed -> same dataset on every run (reproducible).
 """
 
 import numpy as np
@@ -28,7 +27,7 @@ N_ANALISTAS = 10
 
 
 # ---------------------------------------------------------------------------
-# Catalogos
+# Catalogs
 # ---------------------------------------------------------------------------
 
 def generar_estatus_pool() -> pd.DataFrame:
@@ -41,8 +40,8 @@ def generar_estatus_pool() -> pd.DataFrame:
         ],
         columns=["estatus", "descripcion"],
     )
-    # nota: estatus = 0 no vive en el catalogo -> el sistema origen lo usa
-    # como bandera especial de "recien retenido, aun sin tocar"
+    # note: estatus = 0 doesn't live in the catalog -> the source system uses
+    # it as a special flag for "just blocked, not touched yet"
 
 
 def generar_vendedores() -> pd.DataFrame:
@@ -58,7 +57,7 @@ def generar_vendedores() -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# Pedidos
+# Orders
 # ---------------------------------------------------------------------------
 
 def _fecha_aleatoria(dia_base: pd.Timestamp) -> pd.Timestamp:
@@ -67,7 +66,7 @@ def _fecha_aleatoria(dia_base: pd.Timestamp) -> pd.Timestamp:
 
 
 def _formato_usuario_ruidoso(usuario: str) -> str:
-    """Replica el formato inconsistente que llegaba del sistema origen."""
+    """Replicates the inconsistent format that came from the source system."""
     variante = rng.integers(0, 4)
     if variante == 0:
         return usuario.upper()
@@ -87,43 +86,43 @@ def generar_pedidos(vendedores: pd.DataFrame) -> pd.DataFrame:
 
     for offset in range(DIAS_HISTORIA):
         dia = FECHA_INICIO + pd.Timedelta(days=offset)
-        # entrada al pool: entre 10 y 30 pedidos por dia, con algo de
-        # variabilidad de fin de mes (mas pedidos bloqueados por limite
-        # de credito cuando se factura mas)
+        # entering the pool: between 10 and 30 orders per day, with some
+        # end-of-month variability (more orders blocked by credit limit
+        # when billing is higher)
         media_dia = 20 + (6 if dia.day >= 25 else 0)
         n_pedidos_dia = max(0, int(rng.normal(media_dia, 5)))
 
         for _ in range(n_pedidos_dia):
             creado_en = _fecha_aleatoria(dia)
 
-            # motivo de bloqueo: no equiprobable
+            # block reason: non-equiprobable
             motivo_rand = rng.random()
             if motivo_rand < 0.45:
-                bsap, bvs, belx = 0, 0, 1          # limite excedido
+                bsap, bvs, belx = 0, 0, 1          # exceeded limit
             elif motivo_rand < 0.70:
-                bsap, bvs, belx = 0, 1, 0          # saldo vencido
+                bsap, bvs, belx = 0, 1, 0          # past-due balance
             elif motivo_rand < 0.85:
-                bsap, bvs, belx = 1, 0, 0          # bloqueo SAP
+                bsap, bvs, belx = 1, 0, 0          # SAP block
             else:
-                bsap, bvs, belx = 0, 0, 0          # otro
+                bsap, bvs, belx = 0, 0, 0          # other
 
             valor_pedido = round(float(rng.lognormal(mean=8.5, sigma=0.9)), 2)
 
-            # resolucion: liberado / cancelado / sigue en pool
+            # resolution: released / canceled / still in pool
             resolucion = rng.random()
             liberado_fecha = pd.NaT
             cancelado_fecha = pd.NaT
             usuario_libero = ""
-            estatus = 0  # retenido, sin resolver
+            estatus = 0  # blocked, unresolved
 
-            # a los pedidos de los ultimos 2 dias del dataset les damos
-            # menos probabilidad de haberse resuelto ya (todavia no da
-            # tiempo), igual que pasaria en el sistema real
+            # orders from the last 2 days of the dataset get a lower
+            # probability of already being resolved (not enough time has
+            # passed yet), just like it would happen in the real system
             dias_desde_creacion = (FECHA_FIN - creado_en).days
             prob_resuelto = min(0.95, 0.35 + dias_desde_creacion * 0.05)
 
             if resolucion < prob_resuelto * 0.75:
-                # se libera: la mayoria rapido (minutos/horas), cola larga
+                # released: most quickly (minutes/hours), long tail
                 minutos = int(rng.exponential(scale=180))
                 minutos = min(minutos, dias_desde_creacion and 4000 or 4000)
                 liberado_fecha = creado_en + pd.Timedelta(minutes=minutos)
@@ -131,12 +130,12 @@ def generar_pedidos(vendedores: pd.DataFrame) -> pd.DataFrame:
                 usuario_libero = _formato_usuario_ruidoso(usuario_base)
                 estatus = 4 if rng.random() < 0.1 else 1
             elif resolucion < prob_resuelto:
-                # se cancela: tiempos mas largos en promedio
+                # canceled: longer times on average
                 minutos = int(rng.exponential(scale=600))
                 cancelado_fecha = creado_en + pd.Timedelta(minutes=minutos)
                 estatus = 2
             else:
-                # sigue en el pool sin resolver al cierre del dataset
+                # still in the pool unresolved at the dataset's cutoff
                 estatus = 3 if rng.random() < 0.3 else 0
 
             filas.append(
@@ -158,10 +157,10 @@ def generar_pedidos(vendedores: pd.DataFrame) -> pd.DataFrame:
 
     df = pd.DataFrame(filas)
 
-    # problema de calidad conocido: durante las primeras 2 semanas, antes
-    # de que se estabilizara la captura, una parte de los pedidos quedo
-    # con un codigo de estatus fuera de catalogo (99). silver lo corrige
-    # por regla de negocio en vez de descartar esas filas.
+    # known quality issue: during the first 2 weeks, before capture
+    # stabilized, some orders ended up with an out-of-catalog status code
+    # (99). Silver fixes it with a business rule instead of discarding
+    # those rows.
     ventana_mala = df["creado_en"] < (FECHA_INICIO + pd.Timedelta(days=14))
     idx_mal_capturados = df[ventana_mala].sample(frac=0.15, random_state=SEED).index
     df.loc[idx_mal_capturados, "estatus"] = 99
@@ -178,13 +177,13 @@ def main() -> None:
     vendedores.to_csv("data/bronze/vendedores.csv", index=False)
     pedidos.to_csv("data/bronze/pedidos_pool_clientes.csv", index=False)
 
-    print(f"pedidos_pool_clientes: {len(pedidos):,} filas")
-    print(f"  liberados:  {(pedidos['liberado_fecha'].notna()).sum():,}")
-    print(f"  cancelados: {(pedidos['cancelado_fecha'].notna()).sum():,}")
-    print(f"  en pool:    {(pedidos['liberado_fecha'].isna() & pedidos['cancelado_fecha'].isna()).sum():,}")
-    print(f"  estatus fuera de catalogo (99): {(pedidos['estatus'] == 99).sum():,}")
-    print("estatus_pool:", len(estatus_pool), "filas")
-    print("vendedores:", len(vendedores), "filas")
+    print(f"pedidos_pool_clientes: {len(pedidos):,} rows")
+    print(f"  released:  {(pedidos['liberado_fecha'].notna()).sum():,}")
+    print(f"  canceled: {(pedidos['cancelado_fecha'].notna()).sum():,}")
+    print(f"  in pool:    {(pedidos['liberado_fecha'].isna() & pedidos['cancelado_fecha'].isna()).sum():,}")
+    print(f"  out-of-catalog status (99): {(pedidos['estatus'] == 99).sum():,}")
+    print("estatus_pool:", len(estatus_pool), "rows")
+    print("vendedores:", len(vendedores), "rows")
 
 
 if __name__ == "__main__":

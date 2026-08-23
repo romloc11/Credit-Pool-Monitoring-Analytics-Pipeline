@@ -1,24 +1,26 @@
 -- Silver: pedidos_pool
--- Un registro limpio y tipado por pedido. Se corrige aqui, en un solo
--- lugar y con reglas explicitas, todo lo que en el diseno original
--- quedaba mezclado dentro del OPENQUERY o resuelto de forma implicita:
+-- One clean, typed record per order. Everything that the original design
+-- kept mixed inside the OPENQUERY or resolved implicitly is fixed here,
+-- in a single place with explicit rules:
 --
---   1. estatus fuera de catalogo (99) ya no se descarta con un WHERE
---      en la extraccion -- se reconstruye a partir de las fechas.
---   2. "no liberado" y "liberado por alguien fuera de catalogo" eran
---      el mismo valor ('Sistema') en el diseno original. Aqui quedan
---      separados: nombre_analista NULL vs. usuario_no_catalogado TRUE.
+--   1. out-of-catalog status (99) is no longer discarded with a WHERE
+--      at extraction -- it's reconstructed from the dates.
+--   2. "not released" and "released by someone outside the catalog"
+--      used to be the same value ('Sistema') in the original design.
+--      Here they're separated: nombre_analista NULL vs.
+--      usuario_no_catalogado TRUE.
 --
--- Va en pasos (CTE por CTE) para poder revisar cada transformacion
--- por separado si algo no cuadra, en vez de depurar un SELECT gigante.
+-- Built in steps (CTE by CTE) so each transformation can be reviewed
+-- separately if something doesn't add up, instead of debugging one
+-- giant SELECT.
 
 CREATE OR REPLACE TABLE silver.pedidos_pool AS
 
 WITH bronze_deduplicado AS (
-    -- defensivo: si algun dia bronze llega a tener el mismo pedido
-    -- dos veces (por ejemplo, una recarga que no se trunco bien),
-    -- silver se queda con la version mas reciente en vez de duplicar
-    -- el pedido en las capas de arriba.
+    -- defensive: if bronze ever ends up with the same order twice (e.g.
+    -- a reload that didn't truncate properly), silver keeps the most
+    -- recent version instead of duplicating the order in the layers
+    -- above.
     SELECT *,
         ROW_NUMBER() OVER (
             PARTITION BY pedido
@@ -28,7 +30,7 @@ WITH bronze_deduplicado AS (
 ),
 
 tipado AS (
-    -- paso 1: solo conversion de tipos. ninguna regla de negocio todavia.
+    -- step 1: type conversion only. No business rules yet.
     SELECT
         pedido,
         cliente,
@@ -46,7 +48,7 @@ tipado AS (
 ),
 
 usuario_normalizado AS (
-    -- paso 2: mismo criterio de normalizacion que silver.vendedores.
+    -- step 2: same normalization criteria as silver.vendedores.
     SELECT
         *,
         LOWER(REPLACE(usuario_libero_crudo, '_', '.')) AS usuario_libero
@@ -54,9 +56,9 @@ usuario_normalizado AS (
 ),
 
 estatus_reconstruido AS (
-    -- paso 3: si el codigo que llego de origen no existe en catalogo,
-    -- se reconstruye a partir de las fechas, que son un dato mas
-    -- confiable que un campo categorico mal capturado.
+    -- step 3: if the code that came from the source doesn't exist in
+    -- the catalog, it's reconstructed from the dates, which are more
+    -- reliable data than a poorly captured categorical field.
     SELECT
         *,
         CASE

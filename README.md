@@ -1,70 +1,70 @@
 # Order Pool Monitoring Pipeline
 
-Pipeline de datos y dashboard para monitorear el pool de crédito de una empresa: pedidos bloqueados por límite de crédito, saldo vencido o bloqueo SAP, y qué tan rápido el equipo de crédito los libera o los cancela.
+Data pipeline and dashboard to monitor a company's credit pool: orders blocked by credit limit, past-due balance, or SAP block, and how fast the credit team releases or cancels them.
 
-Este fue uno de mis primeros proyectos con SQL y Power BI, construido originalmente en SQL Server contra un sistema real de la empresa donde trabajo. Lo reconstruí completo — lógica, modelo de datos y reporte — aplicando lo que he aprendido desde entonces en proyectos posteriores (medallion architecture, star schema, DAX).
+This was one of my first SQL and Power BI projects, originally built in SQL Server against a real system at the company I work for. I rebuilt it completely — logic, data model, and report — applying what I've learned since then in later projects (medallion architecture, star schema, DAX).
 
-## Problema y objetivo
+## Problem and objective
 
-Cuando un pedido se bloquea por crédito, entra a un "pool" hasta que un analista lo libera o se cancela. El equipo necesita saber tres cosas en cualquier momento: cuántos pedidos siguen atorados, qué tan rápido se están resolviendo, y si el backlog está creciendo o bajando. Sin eso, un pedido se puede quedar semanas en revisión sin que nadie lo note.
+When an order gets blocked for credit reasons, it enters a "pool" until an analyst releases it or it gets canceled. The team needs to know three things at any given moment: how many orders are still stuck, how fast they're being resolved, and whether the backlog is growing or shrinking. Without that, an order can sit in review for weeks without anyone noticing.
 
 ## Dataset
 
-Los datos reales de la empresa no se pueden publicar, así que este repo usa un generador sintético (`python/generate_source_data.py`) que reproduce la misma forma y las mismas inconsistencias que tenía el dato original:
+The company's real data can't be published, so this repo uses a synthetic generator (`python/generate_source_data.py`) that reproduces the same shape and the same inconsistencies the original data had:
 
-- 3,712 pedidos a lo largo de 180 días, 200 clientes, 10 analistas de crédito
-- Motivo de bloqueo no equiprobable (límite excedido es el más común, como en el negocio real)
-- Un lote de pedidos con `estatus` fuera de catálogo en las primeras dos semanas (simula un problema real de captura que hubo que resolver en Silver, no descartar)
-- Formato de usuario inconsistente (mayúsculas, guion bajo vs. punto) para poder mostrar la limpieza real que hace la capa Silver
+- 3,712 orders over 180 days, 200 customers, 10 credit analysts
+- Non-equiprobable block reason (exceeded limit is the most common, as in the real business)
+- A batch of orders with `estatus` outside the catalog in the first two weeks (simulates a real capture issue that had to be resolved in Silver, not discarded)
+- Inconsistent username format (uppercase, underscore vs. period) to show the real cleaning that the Silver layer does
 
-Semilla fija — correr el generador dos veces da exactamente los mismos datos.
+Fixed seed — running the generator twice produces exactly the same data.
 
-## Arquitectura
+## Architecture
 
 ```
-Python (datos sintéticos)
+Python (synthetic data)
         │
         ▼
-Bronze (DuckDB, todo VARCHAR, sin limpiar nada)
+Bronze (DuckDB, everything VARCHAR, nothing cleaned)
         │
         ▼
-Silver (tipado, estatus reconstruido, un registro por pedido)
+Silver (typed, status reconstructed, one record per order)
         │
         ▼
-Gold (star schema: 5 dimensiones + 2 tablas de hechos)
+Gold (star schema: 5 dimensions + 2 fact tables)
         │
         ▼
-Power BI (modelo semántico + 2 páginas de reporte)
+Power BI (semantic model + 2 report pages)
 ```
 
-## Por qué DuckDB y no SQL Server
+## Why DuckDB and not SQL Server
 
-La versión original corría contra SQL Server con un linked server a MariaDB — fiel al entorno real de la empresa, pero imposible de clonar y correr para cualquiera que revise el repo. DuckDB no necesita instalación ni infraestructura, corre local desde un archivo, y su sintaxis SQL es lo bastante parecida a T-SQL que la lógica de negocio se tradujo casi directo. Para el volumen de este proyecto (unos cuantos miles de filas) no hay ninguna razón para algo más pesado.
+The original version ran against SQL Server with a linked server to MariaDB — faithful to the company's real environment, but impossible for anyone reviewing the repo to clone and run. DuckDB needs no installation or infrastructure, runs locally from a single file, and its SQL syntax is close enough to T-SQL that the business logic translated almost directly. For this project's volume (a few thousand rows) there's no reason for anything heavier.
 
-## Pipeline y decisiones técnicas
+## Pipeline and technical decisions
 
-**Bronze:** las tres tablas fuente (`pedidos_pool_clientes`, `estatus_pool`, `vendedores`) se cargan tal cual, todo como texto. Bronze no decide tipos ni corrige nada — si algo llega mal formado del origen, aquí se debe seguir viendo mal formado. Esa disciplina es la que permite que Silver tenga un trabajo real y verificable que hacer.
+**Bronze:** the three source tables (`pedidos_pool_clientes`, `estatus_pool`, `vendedores`) are loaded as-is, everything as text. Bronze doesn't decide types or fix anything — if something arrives malformed from the source, it should still look malformed here. That discipline is what lets Silver have real, verifiable work to do.
 
-**Silver:** aquí corregí dos cosas que en la versión original quedaban mal resueltas:
+**Silver:** here I fixed two things that were poorly resolved in the original version:
 
-- El `estatus` que llega del origen a veces es inválido (fuera de catálogo). La versión original simplemente filtraba esas fechas en la extracción (`WHERE creado_en >= '...'`), perdiendo esos pedidos para siempre. La nueva versión reconstruye el estatus a partir de las fechas de liberación/cancelación, que son un dato más confiable que un campo categórico mal capturado, y marca cuáles fueron reconstruidos (`estatus_fue_reconstruido`) en vez de esconderlo.
-- La lógica original usaba `IFNULL(v.nombre, 'Sistema')`, que mezclaba dos casos completamente distintos bajo la misma etiqueta: un pedido que **todavía no se libera** y un pedido liberado por **alguien que no está en el catálogo de analistas**. Ahora son dos campos separados (`nombre_analista` nulo vs. `usuario_no_catalogado` = true), y el segundo se expone como medida de calidad de dato en el dashboard en vez de ocultarse.
+- The `estatus` coming from the source is sometimes invalid (outside the catalog). The original version simply filtered those dates out at extraction (`WHERE creado_en >= '...'`), losing those orders forever. The new version reconstructs the status from the release/cancellation dates, which are more reliable data than a poorly captured categorical field, and flags which ones were reconstructed (`estatus_fue_reconstruido`) instead of hiding it.
+- The original logic used `IFNULL(v.nombre, 'Sistema')`, which mixed two completely different cases under the same label: an order that **hasn't been released yet** and an order released by **someone not in the analyst catalog**. Now these are two separate fields (`nombre_analista` null vs. `usuario_no_catalogado` = true), and the second is exposed as a data-quality measure on the dashboard instead of being hidden.
 
-**Gold:** el cambio más grande fue reemplazar el TRUNCATE + INSERT del diseño original. Ese patrón sobrescribía la tabla completa en cada carga — funcionaba para ver el estado *actual* del pool, pero hacía imposible ver cómo había evolucionado. La solución fue separar dos grados distintos en dos tablas de hechos:
+**Gold:** the biggest change was replacing the original design's TRUNCATE + INSERT. That pattern overwrote the entire table on every load — it worked for seeing the pool's *current* state, but made it impossible to see how it had evolved. The solution was to split two distinct grains into two fact tables:
 
-- `fact_pedido_pool` — un registro por pedido (el equivalente directo del diseño original, pero como fact de un star schema).
-- `fact_pool_snapshot_diario` — un registro por día con el estado del pool tal como se veía ese día (pedidos nuevos, liberados, cancelados, y cuántos seguían abiertos al cierre). Esta es la tabla que resuelve el problema de historial: en producción correría una vez al día agregando la fila de "hoy" (INSERT, nunca TRUNCATE).
+- `fact_pedido_pool` — one record per order (the direct equivalent of the original design, but as a star-schema fact).
+- `fact_pool_snapshot_diario` — one record per day with the state of the pool as it looked that day (new orders, released, canceled, and how many were still open at close). This is the table that solves the history problem: in production it would run once a day, appending "today's" row (INSERT, never TRUNCATE).
 
-## Calidad de datos
+## Data quality
 
-Dos medidas del dashboard existen específicamente para exponer, no esconder, los límites del dato:
+Two dashboard measures exist specifically to expose, not hide, the data's limits:
 
-- **% de pedidos con estatus reconstruido** (~1.2%): cuántos registros llegaron con un código inválido y se reconstruyeron a partir de fechas.
-- **% de pedidos con usuario no catalogado**: cuántos pedidos fueron liberados por alguien que no aparece en el catálogo de analistas (en este dataset sintético da 0%, pero la medida queda lista para cuando aparezca en datos reales).
+- **% of orders with reconstructed status** (~1.2%): how many records arrived with an invalid code and were reconstructed from dates.
+- **% of orders with an uncataloged user**: how many orders were released by someone who doesn't appear in the analyst catalog (0% in this synthetic dataset, but the measure is ready for when it shows up in real data).
 
-## Modelo de datos (Gold)
+## Data model (Gold)
 
-Star schema con dos hechos y una dimensión de calendario compartida (conformada) entre ambos:
+Star schema with two facts and a shared (conformed) calendar dimension between both:
 
 ```
         dim_cliente ─┐
@@ -75,65 +75,65 @@ Star schema con dos hechos y una dimensión de calendario compartida (conformada
                         fact_pool_snapshot_diario
 ```
 
-`fact_pedido_pool` tiene tres llaves de fecha hacia `dim_calendario` (creación, liberación, cancelación) como dimensión de rol — la de creación queda activa por default, las otras dos se activan puntualmente en un par de medidas vía `USERELATIONSHIP` cuando hace falta ver "liberado en el periodo" en vez de "creado en el periodo".
+`fact_pedido_pool` has three date keys into `dim_calendario` (creation, release, cancellation) as a role-playing dimension — the creation one stays active by default, the other two are activated on demand in a couple of measures via `USERELATIONSHIP` when we need to see "released in the period" instead of "created in the period."
 
-## KPIs y preguntas de negocio
+## KPIs and business questions
 
-| Pregunta | KPI / medida |
+| Question | KPI / measure |
 |---|---|
-| ¿Cuántos pedidos siguen atorados ahora mismo? | Pedidos en Pool al Cierre |
-| ¿El backlog está creciendo o bajando? | Tendencia diaria (línea de tiempo) |
-| ¿Qué proporción termina cancelándose en vez de liberándose? | % Pedidos Cancelados (con semáforo) |
-| ¿Qué tan viejos son los pedidos que siguen sin resolver? | Antigüedad Promedio del Pool (con semáforo) |
-| ¿Cuál es el motivo de bloqueo más frecuente? | Motivo de Bloqueo (desglose) |
-| ¿Qué tan bien está funcionando cada analista? | Pedidos Liberados y Tiempo Promedio de Liberación por Analista |
-| ¿Qué tan confiable es el dato? | % Estatus Reconstruido, % Usuario No Catalogado |
+| How many orders are still stuck right now? | Orders in Pool at Close |
+| Is the backlog growing or shrinking? | Daily trend (time line) |
+| What proportion ends up canceled instead of released? | % Canceled Orders (with traffic light) |
+| How old are the orders that are still unresolved? | Average Pool Age (with traffic light) |
+| What's the most frequent block reason? | Block Reason (breakdown) |
+| How well is each analyst performing? | Orders Released and Average Release Time by Analyst |
+| How reliable is the data? | % Reconstructed Status, % Uncataloged User |
 
 ## Dashboard
 
-**Página 1 — Estado del pool.** Pensada para revisar de un vistazo: 4 tarjetas KPI (dos con semáforo verde/ámbar/rojo sobre umbrales reales, dos neutrales), cuatro líneas de tendencia sincronizadas en el mismo eje de fechas, el desglose por motivo de bloqueo, y una tabla con los pedidos que llevan más tiempo abiertos — ordenados peor primero, como una cola de atención.
+**Page 1 — Pool status.** Designed for an at-a-glance review: 4 KPI cards (two with a green/amber/red traffic light over real thresholds, two neutral), four trend lines synced on the same date axis, the breakdown by block reason, and a table with the longest-open orders — worst first, like an attention queue.
 
-![Estado del pool](docs/screenshots/dashboard_estado_del_pool.png)
+![Pool status](docs/screenshots/dashboard_estado_del_pool.png)
 
-**Página 2 — Analistas y antigüedad.** Vista de análisis: ranking de pedidos liberados por analista, tiempo promedio de liberación, comparación de tiempos por motivo de bloqueo, y las dos medidas de calidad de dato. Con segmentadores de Analista, Motivo y Mes.
+**Page 2 — Analysts and age.** Analysis view: ranking of orders released by analyst, average release time, time comparison by block reason, and the two data-quality measures. With Analyst, Reason, and Month slicers.
 
-![Analistas y antigüedad](docs/screenshots/dashboard_analistas_y_antiguedad.png)
+![Analysts and age](docs/screenshots/dashboard_analistas_y_antiguedad.png)
 
-Los segmentadores de **Mes** están sincronizados entre las dos páginas (elegir un mes en una se aplica en la otra). Los de Analista y Motivo solo viven en la página 2 a propósito: en la página 1, esas dos dimensiones no aplican al pool abierto porque **un pedido que sigue abierto todavía no tiene analista asignado** — eso no es una limitación del reporte, es un hecho del negocio (el analista solo se asigna cuando el pedido se libera).
+The **Month** slicers are synced between the two pages (choosing a month on one applies to the other). The Analyst and Reason ones only live on page 2 on purpose: on page 1, those two dimensions don't apply to the open pool because **an order that's still open doesn't have an analyst assigned yet** — that's not a limitation of the report, it's a fact of the business (the analyst is only assigned when the order is released).
 
-## Bugs reales que encontré construyendo esto
+## Real bugs I found building this
 
-Documentarlos aquí porque el proceso de encontrarlos fue más instructivo que el resultado final:
+Documenting them here because the process of finding them was more instructive than the final result:
 
-1. **Medida y columna con el mismo nombre.** Tenía una medida `Pedidos en Pool al Cierre` y una columna oculta con el mismo nombre salvo mayúsculas en la misma tabla. Power BI no distingue mayúsculas para esto, y el modelo se negaba a cargar. Se resuelve renombrando la columna fuente para que no choque.
-2. **Un KPI mal etiquetado.** Una tarjeta decía "pedidos liberados por día" pero en realidad sumaba el período completo seleccionado, no un promedio diario — dos cosas muy distintas. Hubo que hacer una medida de promedio real (`AVERAGEX` sobre el calendario) en vez de solo cambiar la etiqueta.
-3. **Una tabla que no renderizaba.** Un visual fallaba con un genérico "problema de capacidad o licencia". Lo aislé probando 3 configuraciones distintas (con filtro, sin filtro, cambiando el campo de orden) hasta confirmar que la única constante era una medida con `CALCULATE(MAX(...), REMOVEFILTERS(...))` anidada — Power BI Desktop no la resolvía bien dentro de esa tabla en particular. Se resolvió sacando esa medida de la tabla y usando una columna simple en su lugar.
+1. **A measure and a column with the same name.** I had a measure `Pedidos en Pool al Cierre` and a hidden column with the same name except for case, in the same table. Power BI doesn't distinguish case for this, and the model refused to load. Fixed by renaming the source column so it doesn't collide.
+2. **A mislabeled KPI.** A card said "orders released per day" but it was actually summing the whole selected period, not a daily average — two very different things. Had to build a real average measure (`AVERAGEX` over the calendar) instead of just changing the label.
+3. **A table that wouldn't render.** A visual failed with a generic "capacity or license issue." I isolated it by testing 3 different configurations (with filter, without filter, changing the sort field) until confirming the only constant was a measure with a nested `CALCULATE(MAX(...), REMOVEFILTERS(...))` -- Power BI Desktop didn't resolve it well inside that particular table. Fixed by pulling that measure out of the table and using a plain column instead.
 
-## Cómo reproducir este proyecto
+## How to reproduce this project
 
 ```bash
-# 1. Generar los datos sintéticos (misma semilla = mismos datos)
+# 1. Generate the synthetic data (same seed = same data)
 python python/generate_source_data.py
 
-# 2. Correr el pipeline bronze -> silver -> gold en DuckDB
+# 2. Run the bronze -> silver -> gold pipeline in DuckDB
 python python/build_database.py bronze silver gold
 
-# 3. Regenerar el reporte de Power BI (PBIP): paginas, visuales y tema
+# 3. Regenerate the Power BI report (PBIP): pages, visuals, and theme
 node powerbi/build_report.js
 
-# 4. Abrir powerbi/PoolCredito.pbip en Power BI Desktop
+# 4. Open powerbi/PoolCredito.pbip in Power BI Desktop
 ```
 
-El modelo semántico (`powerbi/PoolCredito.SemanticModel/`) ya está construido y no necesita el paso 3 para funcionar — ese paso solo regenera las páginas del reporte. Los archivos `.tmdl` del modelo se pueden editar directo o reconstruir con las herramientas de modelado de Power BI.
+The semantic model (`powerbi/PoolCredito.SemanticModel/`) is already built and doesn't need step 3 to work — that step only regenerates the report pages. The model's `.tmdl` files can be edited directly or rebuilt with Power BI's modeling tools.
 
-## Limitaciones y próximos pasos
+## Limitations and next steps
 
-- El pool de crédito real seguramente tiene reglas de escalamiento (quién puede liberar qué monto) que este dataset sintético no modela.
-- Con más tiempo, agregaría una tabla de hechos a nivel día×motivo en Gold para que los segmentadores de motivo también filtren las tarjetas de saldo en la página 1 (hoy solo lo hace Mes) — motivo sí aplica a un pedido abierto, a diferencia de analista.
-- El refresh es manual (Import mode) porque este es un proyecto de portafolio con datos sintéticos, no un pipeline en producción. En un entorno real, `sql/gold/03_gold_fact_pool_snapshot_diario.sql` es exactamente la lógica que correría una vez al día.
+- The real credit pool almost certainly has escalation rules (who can release what amount) that this synthetic dataset doesn't model.
+- Given more time, I'd add a day×reason fact table in Gold so the reason slicers also filter the balance cards on page 1 (today only Month does) — reason does apply to an open order, unlike analyst.
+- The refresh is manual (Import mode) because this is a portfolio project with synthetic data, not a production pipeline. In a real environment, `sql/gold/03_gold_fact_pool_snapshot_diario.sql` is exactly the logic that would run once a day.
 
-## Herramientas utilizadas
+## Tools used
 
-- **DuckDB** — motor de transformación, sin necesidad de instalar un servidor de base de datos para poder correr el proyecto.
-- **Python (pandas, numpy)** — generación de datos sintéticos reproducibles.
-- **Power BI (PBIR/PBIP)** — modelo semántico y dashboard. El reporte se genera con un script de Node.js (`powerbi/build_report.js`) que traduce el diseño a los archivos del proyecto — así el reporte completo es reproducible desde código, igual que el resto del pipeline.
+- **DuckDB** — transformation engine, no need to install a database server to run the project.
+- **Python (pandas, numpy)** — reproducible synthetic data generation.
+- **Power BI (PBIR/PBIP)** — semantic model and dashboard. The report is generated with a Node.js script (`powerbi/build_report.js`) that translates the design into the project files — so the whole report is reproducible from code, just like the rest of the pipeline.

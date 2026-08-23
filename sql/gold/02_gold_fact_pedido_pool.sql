@@ -1,10 +1,11 @@
 -- Gold: fact_pedido_pool
--- Grano: un pedido. Trae 3 llaves hacia dim_calendario (creacion,
--- liberacion, cancelacion) porque es dimension de rol -- el mismo
--- calendario sirve para responder "pedidos creados en marzo" y
--- "pedidos liberados en marzo" sin duplicar la dimension. En Power BI
--- esto se maneja activando una sola relacion por default (creacion) y
--- las otras dos via USERELATIONSHIP en las medidas que las necesiten.
+-- Grain: one order. Carries 3 keys into dim_calendario (creation,
+-- release, cancellation) because it's a role-playing dimension -- the
+-- same calendar answers both "orders created in March" and "orders
+-- released in March" without duplicating the dimension. In Power BI
+-- this is handled by activating a single relationship by default
+-- (creation) and the other two via USERELATIONSHIP in the measures
+-- that need them.
 
 CREATE OR REPLACE TABLE gold.fact_pedido_pool AS
 SELECT

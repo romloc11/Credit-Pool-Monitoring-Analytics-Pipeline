@@ -1,7 +1,7 @@
--- Gold: dimensiones del star schema.
--- Silver ya viene limpio, asi que aqui solo se trata de sacar valores
--- unicos y darles una llave subrogada -- no hay reglas de negocio
--- nuevas en este archivo.
+-- Gold: star schema dimensions.
+-- Silver already arrives clean, so this is just about pulling unique
+-- values and giving them a surrogate key -- no new business rules in
+-- this file.
 
 CREATE SCHEMA IF NOT EXISTS gold;
 
@@ -30,10 +30,10 @@ SELECT
     estatus
 FROM (SELECT DISTINCT estatus FROM silver.pedidos_pool);
 
--- dim_calendario: cubre desde el pedido mas antiguo hasta el evento
--- (creacion / liberacion / cancelacion) mas reciente que haya en los
--- datos, no un rango fijo -- asi la dimension siempre calza con lo
--- que realmente hay en los hechos.
+-- dim_calendario: covers from the oldest order to the most recent event
+-- (creation / release / cancellation) present in the data, not a fixed
+-- range -- this way the dimension always matches what's actually in
+-- the facts.
 CREATE OR REPLACE TABLE gold.dim_calendario AS
 WITH rango AS (
     SELECT
@@ -57,7 +57,7 @@ SELECT
         WHEN 7 THEN 'Julio' WHEN 8 THEN 'Agosto' WHEN 9 THEN 'Septiembre'
         WHEN 10 THEN 'Octubre' WHEN 11 THEN 'Noviembre' WHEN 12 THEN 'Diciembre'
     END AS nombre_mes,
-    ISODOW(fecha) AS dia_semana_num,  -- 1 = lunes ... 7 = domingo
+    ISODOW(fecha) AS dia_semana_num,  -- 1 = Monday ... 7 = Sunday
     CASE ISODOW(fecha)
         WHEN 1 THEN 'Lunes' WHEN 2 THEN 'Martes' WHEN 3 THEN 'Miercoles'
         WHEN 4 THEN 'Jueves' WHEN 5 THEN 'Viernes' WHEN 6 THEN 'Sabado'
