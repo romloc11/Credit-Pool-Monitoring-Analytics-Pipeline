@@ -1,0 +1,34 @@
+relationship 'Pedidos_Cliente Key_Cliente_Cliente Key'
+	fromColumn: Pedidos.'Cliente Key'
+	toColumn: Cliente.'Cliente Key'
+
+relationship 'Pedidos_Analista Key_Analista_Analista Key'
+	fromColumn: Pedidos.'Analista Key'
+	toColumn: Analista.'Analista Key'
+
+relationship 'Pedidos_Motivo Key_Motivo de Bloqueo_Motivo Key'
+	fromColumn: Pedidos.'Motivo Key'
+	toColumn: 'Motivo de Bloqueo'.'Motivo Key'
+
+relationship 'Pedidos_Estatus Key_Estatus_Estatus Key'
+	fromColumn: Pedidos.'Estatus Key'
+	toColumn: Estatus.'Estatus Key'
+
+relationship 'Pedidos_Fecha Creacion Key_Calendario_Fecha'
+	fromColumn: Pedidos.'Fecha de Creacion'
+	toColumn: Calendario.Fecha
+
+relationship 'Pedidos_Fecha Liberacion Key_Calendario_Fecha'
+	isActive: false
+	fromColumn: Pedidos.'Fecha Liberacion Key'
+	toColumn: Calendario.Fecha
+
+relationship 'Pedidos_Fecha Cancelacion Key_Calendario_Fecha'
+	isActive: false
+	fromColumn: Pedidos.'Fecha Cancelacion Key'
+	toColumn: Calendario.Fecha
+
+relationship 'Historial Diario del Pool_Fecha Key_Calendario_Fecha'
+	fromColumn: 'Historial Diario del Pool'.'Fecha Key'
+	toColumn: Calendario.Fecha
+

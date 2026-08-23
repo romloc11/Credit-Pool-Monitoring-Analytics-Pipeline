@@ -1,0 +1,29 @@
+/// Clientes que han tenido al menos un pedido en el pool de credito.
+table Cliente
+	lineageTag: 079accb4-a9c7-4cab-ba86-385df4d78913
+
+	column 'Cliente Key'
+		dataType: int64
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: 38146b22-2c16-41bc-be34-dad5698b55e8
+		summarizeBy: none
+		sourceColumn: Cliente Key
+
+	column Cliente
+		dataType: string
+		lineageTag: 2c792908-3536-4bfb-9ca5-cdddd3647fd1
+		summarizeBy: none
+		sourceColumn: Cliente
+
+	partition Cliente = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\roman.lopez\Documentos\Claude\Order-Pool-Monitoring-Pipeline\data\gold\dim_cliente.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"cliente_key", Int64.Type}, {"cliente", type text}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type",{{"cliente_key", "Cliente Key"}, {"cliente", "Cliente"}})
+				in
+				    #"Renamed Columns"
+

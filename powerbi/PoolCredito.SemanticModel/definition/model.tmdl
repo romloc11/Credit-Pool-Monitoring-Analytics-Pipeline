@@ -1,0 +1,19 @@
+model PoolCredito
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	discourageImplicitMeasures
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation PBI_ProTooling = ["MCP-PBIModeling"]
+
+ref table Cliente
+ref table Analista
+ref table 'Motivo de Bloqueo'
+ref table Estatus
+ref table Calendario
+ref table Pedidos
+ref table 'Historial Diario del Pool'
+

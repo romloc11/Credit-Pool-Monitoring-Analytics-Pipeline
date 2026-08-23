@@ -1,0 +1,29 @@
+/// Motivo por el cual un pedido entro al pool de credito (limite excedido, saldo vencido, bloqueo SAP u otro).
+table 'Motivo de Bloqueo'
+	lineageTag: 37336c24-53e5-43f1-99d0-a221d6b2df57
+
+	column 'Motivo Key'
+		dataType: int64
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: fbac9c21-7235-4d09-8765-2edecc01340c
+		summarizeBy: none
+		sourceColumn: Motivo Key
+
+	column 'Motivo de Bloqueo'
+		dataType: string
+		lineageTag: ef8c3b3f-c046-4a12-85e8-86c00c08ee65
+		summarizeBy: none
+		sourceColumn: Motivo de Bloqueo
+
+	partition 'Motivo de Bloqueo' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\roman.lopez\Documentos\Claude\Order-Pool-Monitoring-Pipeline\data\gold\dim_motivo_pool.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"motivo_key", Int64.Type}, {"motivo_pool", type text}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type",{{"motivo_key", "Motivo Key"}, {"motivo_pool", "Motivo de Bloqueo"}})
+				in
+				    #"Renamed Columns"
+

@@ -1,0 +1,29 @@
+/// Estatus resuelto del pedido dentro del pool de credito (Liberado, Cancelado, Retenido, En revision, Liberado con excepcion).
+table Estatus
+	lineageTag: 608288d2-7a23-4ed0-b704-06ffd6a4caba
+
+	column 'Estatus Key'
+		dataType: int64
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: abf845af-152f-4e2d-b12e-906bb741f45e
+		summarizeBy: none
+		sourceColumn: Estatus Key
+
+	column Estatus
+		dataType: string
+		lineageTag: a15a1aa2-7f09-480c-97e2-cb1d5cc10a0a
+		summarizeBy: none
+		sourceColumn: Estatus
+
+	partition Estatus = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\roman.lopez\Documentos\Claude\Order-Pool-Monitoring-Pipeline\data\gold\dim_estatus.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"estatus_key", Int64.Type}, {"estatus", type text}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type",{{"estatus_key", "Estatus Key"}, {"estatus", "Estatus"}})
+				in
+				    #"Renamed Columns"
+

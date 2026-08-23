@@ -1,0 +1,129 @@
+/// Tabla de hechos de snapshot periodico: un registro por dia con el estado del pool tal como se veia al cierre de ese dia. Reemplaza al TRUNCATE + INSERT del diseno original -- permite ver tendencia en el tiempo en vez de solo el estado actual.
+table 'Historial Diario del Pool'
+	lineageTag: e17c6af3-5cbb-4f71-a4cf-e5a9cdc2a0e3
+
+	/// Pedidos que entraron al pool cada dia. Medida totalmente aditiva -- se puede sumar sobre cualquier rango de fechas.
+	measure 'Pedidos Nuevos por Dia' = SUM('Historial Diario del Pool'[Pedidos Nuevos])
+		formatString: #,##0
+		displayFolder: Tendencia Diaria
+		lineageTag: 3c36e385-011e-4c87-99f8-e704b0ebf6a4
+
+	/// Pedidos liberados cada dia. Medida totalmente aditiva.
+	measure 'Pedidos Liberados por Dia' = SUM('Historial Diario del Pool'[Pedidos Liberados])
+		formatString: #,##0
+		displayFolder: Tendencia Diaria
+		lineageTag: 96c2fbbf-1ee8-4714-acf6-dac842ab20e9
+
+	/// Pedidos cancelados cada dia. Medida totalmente aditiva.
+	measure 'Pedidos Cancelados por Dia' = SUM('Historial Diario del Pool'[Pedidos Cancelados])
+		formatString: #,##0
+		displayFolder: Tendencia Diaria
+		lineageTag: d94c0ead-5896-4eff-9391-506961e827f1
+
+	/// Pedidos que seguian abiertos al cierre del ultimo dia del periodo seleccionado. Medida semi-aditiva (usa LASTDATE) -- sumar esta columna entre varios dias no tiene sentido de negocio.
+	measure 'Pedidos en Pool al Cierre' =
+			CALCULATE(
+			    SUM('Historial Diario del Pool'[Saldo Pedidos En Pool]),
+			    LASTDATE('Calendario'[Fecha])
+			)
+		formatString: #,##0
+		displayFolder: Saldo al Cierre
+		lineageTag: dcfb520b-3008-47b7-9759-0bacfd8edf36
+
+	/// Valor de los pedidos que seguian abiertos al cierre del ultimo dia del periodo seleccionado. Medida semi-aditiva.
+	measure 'Valor en Pool al Cierre' =
+			CALCULATE(
+			    SUM('Historial Diario del Pool'[Saldo Valor En Pool]),
+			    LASTDATE('Calendario'[Fecha])
+			)
+		formatString: $#,##0.00
+		displayFolder: Saldo al Cierre
+		lineageTag: 8b56e9f4-c2aa-4196-baac-b9146c46516c
+
+	/// Antiguedad promedio, en dias, de los pedidos que seguian abiertos al cierre del ultimo dia del periodo seleccionado. Medida semi-aditiva.
+	measure 'Antiguedad Promedio del Pool (Dias)' =
+			CALCULATE(
+			    AVERAGE('Historial Diario del Pool'[Edad Promedio Dias En Pool]),
+			    LASTDATE('Calendario'[Fecha])
+			)
+		formatString: #,##0.0
+		displayFolder: Saldo al Cierre
+		lineageTag: 3f870335-113b-4ac7-b5a4-c7f5d703ec9a
+
+	/// Etiqueta de texto del semaforo de Antiguedad Promedio del Pool -- acompana el color del card para no depender solo del color (WCAG 1.4.1).
+	measure 'Estado Antiguedad Promedio del Pool' =
+			VAR _valor = [Antiguedad Promedio del Pool (Dias)]
+			RETURN
+			    IF(_valor < 10, "Saludable",
+			    IF(_valor <= 25, "Atencion", "Critico"))
+		displayFolder: Saldo al Cierre
+		lineageTag: 0aeffcef-b18f-43b5-bee8-55b595c5732d
+
+	/// Promedio de pedidos liberados por dia dentro del periodo seleccionado. A diferencia de [Pedidos Liberados por Dia], que es aditiva (sirve para sumar sobre un rango), esta es la version pensada para un KPI de una sola cifra -- una tasa, no un total acumulado.
+	measure 'Pedidos Liberados por Dia (Promedio)' = AVERAGEX(VALUES('Calendario'[Fecha]), [Pedidos Liberados por Dia])
+		formatString: #,##0.0
+		displayFolder: Tendencia Diaria
+		lineageTag: 6ba2a9bc-131b-41cf-bef2-54f77cde7cf6
+
+	column 'Fecha Key'
+		dataType: dateTime
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: 23125e21-e7ea-4572-bc00-2ce4a8ced775
+		summarizeBy: none
+		sourceColumn: Fecha Key
+
+	column 'Pedidos Nuevos'
+		dataType: int64
+		isHidden
+		lineageTag: 69013e26-4525-4227-a68c-03c1f57fff8d
+		summarizeBy: none
+		sourceColumn: Pedidos Nuevos
+
+	column 'Pedidos Liberados'
+		dataType: int64
+		isHidden
+		lineageTag: 5e1e130e-76d6-4343-9306-2cf9bbbb1809
+		summarizeBy: none
+		sourceColumn: Pedidos Liberados
+
+	column 'Pedidos Cancelados'
+		dataType: int64
+		isHidden
+		lineageTag: 90900bdd-41cc-4da6-9261-5a3e24a6bbd4
+		summarizeBy: none
+		sourceColumn: Pedidos Cancelados
+
+	column 'Saldo Pedidos En Pool'
+		dataType: int64
+		isHidden
+		lineageTag: 0d5d1a74-43f7-40a5-93e9-f5f96359ab5b
+		summarizeBy: none
+		sourceColumn: Pedidos En Pool Al Cierre
+
+	column 'Saldo Valor En Pool'
+		dataType: decimal
+		isHidden
+		formatString: $#,##0.00
+		lineageTag: 7c78060d-0b68-44b6-9763-73f1e0732ae8
+		summarizeBy: none
+		sourceColumn: Valor En Pool Al Cierre
+
+	column 'Edad Promedio Dias En Pool'
+		dataType: decimal
+		isHidden
+		lineageTag: 36a83b38-0da1-49b9-be37-d8cde6fc8cd1
+		summarizeBy: none
+		sourceColumn: Edad Promedio Dias En Pool
+
+	partition 'Historial Diario del Pool' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\roman.lopez\Documentos\Claude\Order-Pool-Monitoring-Pipeline\data\gold\fact_pool_snapshot_diario.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"fecha_key", type date}, {"pedidos_nuevos", Int64.Type}, {"pedidos_liberados", Int64.Type}, {"pedidos_cancelados", Int64.Type}, {"pedidos_en_pool_al_cierre", Int64.Type}, {"valor_en_pool_al_cierre", Currency.Type}, {"edad_promedio_dias_en_pool", Currency.Type}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type",{{"fecha_key", "Fecha Key"}, {"pedidos_nuevos", "Pedidos Nuevos"}, {"pedidos_liberados", "Pedidos Liberados"}, {"pedidos_cancelados", "Pedidos Cancelados"}, {"pedidos_en_pool_al_cierre", "Pedidos En Pool Al Cierre"}, {"valor_en_pool_al_cierre", "Valor En Pool Al Cierre"}, {"edad_promedio_dias_en_pool", "Edad Promedio Dias En Pool"}})
+				in
+				    #"Renamed Columns"
+

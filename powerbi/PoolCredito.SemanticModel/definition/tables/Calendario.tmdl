@@ -1,0 +1,81 @@
+/// Dimension de calendario, un registro por dia, desde el pedido mas antiguo hasta el evento mas reciente registrado en el pool.
+table Calendario
+	lineageTag: 37d64460-80e5-4e13-8171-87177456d7a5
+	dataCategory: Time
+
+	column Fecha
+		dataType: dateTime
+		isUnique
+		formatString: dd/mm/yyyy
+		lineageTag: 6d2541c2-1e11-4af0-ac66-09224c1d8c96
+		summarizeBy: none
+		sourceColumn: Fecha
+
+	column Anio
+		dataType: int64
+		lineageTag: 165ef647-9d22-4eee-8a1f-4ad787459efb
+		summarizeBy: none
+		sourceColumn: Anio
+
+	column Mes
+		dataType: int64
+		isHidden
+		lineageTag: 869aee9b-9e52-4ce8-8b29-a8065b7de9a6
+		summarizeBy: none
+		sourceColumn: Mes
+
+	column 'Nombre Mes'
+		dataType: string
+		lineageTag: b5a68191-0f37-454d-a1fc-713a609df221
+		summarizeBy: none
+		sourceColumn: Nombre Mes
+		sortByColumn: Mes
+
+	column 'Dia Semana Num'
+		dataType: int64
+		isHidden
+		lineageTag: c4e57c60-9a1a-4a18-8869-b7aa106c3947
+		summarizeBy: none
+		sourceColumn: Dia Semana Num
+
+	column 'Nombre Dia'
+		dataType: string
+		lineageTag: f81da0d5-31e1-43f1-916f-790d3b1007d8
+		summarizeBy: none
+		sourceColumn: Nombre Dia
+		sortByColumn: 'Dia Semana Num'
+
+	column 'Es Fin De Semana'
+		dataType: boolean
+		lineageTag: ba6f2504-7e68-4968-ae6e-31fa5ddebc57
+		summarizeBy: none
+		sourceColumn: Es Fin De Semana
+
+	/// Jerarquia de navegacion para drill-down en visuales de tiempo.
+	hierarchy 'Anio Mes Fecha'
+		lineageTag: 2b221309-ca3f-42a5-b295-4ccb9c894b2e
+
+		level Anio
+			lineageTag: 30e54942-def0-4acc-bb83-4613db526260
+			column: Anio
+
+		level Mes
+			lineageTag: 28d258cf-938e-4ba9-9f02-fd4cba59135c
+			column: 'Nombre Mes'
+
+		level Fecha
+			lineageTag: fcd4397e-98b8-4a3a-8bbe-0519c91165dd
+			column: Fecha
+
+	partition Calendario = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\roman.lopez\Documentos\Claude\Order-Pool-Monitoring-Pipeline\data\gold\dim_calendario.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"fecha_key", type date}, {"fecha", type date}, {"anio", Int64.Type}, {"mes", Int64.Type}, {"dia", Int64.Type}, {"nombre_mes", type text}, {"dia_semana_num", Int64.Type}, {"nombre_dia", type text}, {"es_fin_de_semana", type logical}}),
+				    #"Removed Columns" = Table.RemoveColumns(#"Changed Type",{"fecha", "dia"}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Removed Columns",{{"fecha_key", "Fecha"}, {"anio", "Anio"}, {"mes", "Mes"}, {"nombre_mes", "Nombre Mes"}, {"dia_semana_num", "Dia Semana Num"}, {"nombre_dia", "Nombre Dia"}, {"es_fin_de_semana", "Es Fin De Semana"}})
+				in
+				    #"Renamed Columns"
+

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "PoolCredito"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "ea2536b1-70dc-4246-a308-7964139f05f7"
+  }
+}

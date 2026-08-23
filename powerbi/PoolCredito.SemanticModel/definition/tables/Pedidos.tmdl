@@ -1,0 +1,247 @@
+/// Un registro por pedido que entro al pool de credito. Grano: pedido.
+table Pedidos
+	lineageTag: f7a18406-08f7-4176-91f8-e505577f0301
+
+	/// Pedidos que entraron al pool en el periodo seleccionado, segun fecha de creacion.
+	measure 'Pedidos Creados' = COUNTROWS('Pedidos')
+		formatString: #,##0
+		displayFolder: Volumen
+		lineageTag: b8fce233-d47c-4cc6-9b22-ace744fd2f04
+
+	/// Pedidos que aun no se han liberado ni cancelado. Para ver la evolucion dia a dia usar [Pedidos en Pool al Cierre] en Historial Diario del Pool -- esta medida no es aditiva en el tiempo.
+	measure 'Pedidos en Pool' = CALCULATE(COUNTROWS('Pedidos'), 'Pedidos'[Indicador En Pool] = TRUE())
+		formatString: #,##0
+		displayFolder: Volumen
+		lineageTag: d903b813-4e09-4cd0-a1b9-a1b766afec91
+
+	/// Pedidos liberados, filtrados por fecha de creacion (relacion activa por default).
+	measure 'Pedidos Liberados' = CALCULATE(COUNTROWS('Pedidos'), 'Pedidos'[Indicador Liberado] = TRUE())
+		formatString: #,##0
+		displayFolder: Volumen
+		lineageTag: ececf2ed-3f84-466a-8abb-6f0f03da5214
+
+	/// Pedidos cancelados, filtrados por fecha de creacion (relacion activa por default).
+	measure 'Pedidos Cancelados' = CALCULATE(COUNTROWS('Pedidos'), 'Pedidos'[Indicador Cancelado] = TRUE())
+		formatString: #,##0
+		displayFolder: Volumen
+		lineageTag: a4fd154d-d709-46e6-a900-f95a92a62702
+
+	/// Suma del valor de los pedidos, segun fecha de creacion.
+	measure 'Valor Total en Pedidos' = SUM('Pedidos'[Valor Pedido])
+		formatString: $#,##0.00
+		displayFolder: Volumen
+		lineageTag: 84b4938c-b9a3-4d47-bc65-b6a0f7fc55fd
+
+	/// Valor de los pedidos liberados dentro del periodo, usando la fecha de liberacion en vez de la fecha de creacion.
+	measure 'Valor Liberado en el Periodo' =
+			CALCULATE(
+			    SUM('Pedidos'[Valor Pedido]),
+			    USERELATIONSHIP('Pedidos'[Fecha Liberacion Key], 'Calendario'[Fecha]),
+			    'Pedidos'[Indicador Liberado] = TRUE()
+			)
+		formatString: $#,##0.00
+		displayFolder: Volumen
+		lineageTag: b6aa515c-1ffe-4fde-a33a-427ab1a2affd
+
+	/// Valor de los pedidos cancelados dentro del periodo, usando la fecha de cancelacion en vez de la fecha de creacion.
+	measure 'Valor Cancelado en el Periodo' =
+			CALCULATE(
+			    SUM('Pedidos'[Valor Pedido]),
+			    USERELATIONSHIP('Pedidos'[Fecha Cancelacion Key], 'Calendario'[Fecha]),
+			    'Pedidos'[Indicador Cancelado] = TRUE()
+			)
+		formatString: $#,##0.00
+		displayFolder: Volumen
+		lineageTag: a9539811-7586-45b9-b640-4b1307087902
+
+	/// Horas promedio entre que un pedido entra al pool y se libera.
+	measure 'Tiempo Promedio de Liberacion (Horas)' = DIVIDE(AVERAGE('Pedidos'[Minutos Liberacion]), 60)
+		formatString: #,##0.0
+		displayFolder: Tiempos
+		lineageTag: dcc15ad0-5cc3-4efc-9be4-eeb6d06881ae
+
+	/// Horas promedio entre que un pedido entra al pool y se cancela.
+	measure 'Tiempo Promedio de Cancelacion (Horas)' = DIVIDE(AVERAGE('Pedidos'[Minutos Cancelacion]), 60)
+		formatString: #,##0.0
+		displayFolder: Tiempos
+		lineageTag: 323ee8e0-9e77-436a-83d7-aabfe744e32d
+
+	/// Porcentaje de pedidos cuyo estatus llego invalido desde el origen y se reconstruyo a partir de las fechas de liberacion/cancelacion. Medida de transparencia sobre calidad de dato.
+	measure '% Pedidos con Estatus Reconstruido' =
+			VAR _total = COUNTROWS('Pedidos')
+			VAR _reconstruidos = CALCULATE(COUNTROWS('Pedidos'), 'Pedidos'[Estatus Fue Reconstruido] = TRUE())
+			RETURN DIVIDE(_reconstruidos, _total)
+		formatString: 0.0%
+		displayFolder: Calidad de Dato
+		lineageTag: d484b288-0dc6-4911-921b-43d65279e06b
+
+	/// Porcentaje de pedidos liberados por un usuario que no aparece en el catalogo de analistas. Medida de transparencia sobre calidad de dato.
+	measure '% Pedidos con Usuario No Catalogado' =
+			VAR _total = COUNTROWS('Pedidos')
+			VAR _no_catalogados = CALCULATE(COUNTROWS('Pedidos'), 'Pedidos'[Usuario No Catalogado] = TRUE())
+			RETURN DIVIDE(_no_catalogados, _total)
+		formatString: 0.0%
+		displayFolder: Calidad de Dato
+		lineageTag: fc0920d8-db7b-4128-829a-a64d0b47c26e
+
+	/// Proporcion de pedidos creados que terminan cancelados. Senal de perdida de venta por el proceso de bloqueo de credito, no solo un conteo.
+	measure '% Pedidos Cancelados' = DIVIDE([Pedidos Cancelados], [Pedidos Creados])
+		formatString: 0.0%
+		displayFolder: Volumen
+		lineageTag: 63de77c5-4c06-46e1-ba49-ffdb4d5f1e7d
+
+	/// Dias que lleva abierto un pedido que sigue en el pool, medidos contra la fecha mas reciente que existe en el dataset (no contra la fecha real de hoy, porque el dataset es historico y sintetico). Solo tiene valor para pedidos con Indicador En Pool; en los demas casos regresa blanco.
+	measure 'Dias en Pool al Cierre de Datos' =
+			VAR _fecha_cierre = CALCULATE(MAX('Calendario'[Fecha]), REMOVEFILTERS('Calendario'))
+			VAR _en_pool = MAX('Pedidos'[Indicador En Pool])
+			VAR _fecha_creacion = MAX('Pedidos'[Fecha Creacion Key])
+			RETURN IF(_en_pool, DATEDIFF(_fecha_creacion, _fecha_cierre, DAY))
+		formatString: #,##0
+		displayFolder: Tiempos
+		lineageTag: f3a2744a-5d0b-4134-ad2f-f5bebb66a20a
+
+	/// Etiqueta de texto del semaforo de % Pedidos Cancelados -- acompana el color del card para no depender solo del color (WCAG 1.4.1).
+	measure 'Estado % Pedidos Cancelados' =
+			VAR _valor = [% Pedidos Cancelados]
+			RETURN
+			    IF(_valor < 0.15, "Saludable",
+			    IF(_valor <= 0.25, "Atencion", "Critico"))
+		displayFolder: Calidad de Dato
+		lineageTag: 8d604099-99b9-4800-b177-85c4efe27799
+
+	column Pedido
+		dataType: string
+		lineageTag: 57132fe1-c80c-4954-b5f4-971ffba047b3
+		summarizeBy: none
+		sourceColumn: Pedido
+
+	column 'Cliente Key'
+		dataType: int64
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: 47a8b37f-4855-44c2-8588-9e39c9e06e57
+		summarizeBy: none
+		sourceColumn: Cliente Key
+
+	column 'Analista Key'
+		dataType: int64
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: fed3a93a-5bc9-493b-befb-c0949133a662
+		summarizeBy: none
+		sourceColumn: Analista Key
+
+	column 'Motivo Key'
+		dataType: int64
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: 8ba14933-6937-41fa-94b3-69d14624fe8d
+		summarizeBy: none
+		sourceColumn: Motivo Key
+
+	column 'Estatus Key'
+		dataType: int64
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: 823d5201-4b8e-4e91-aac2-b880b2ee7f0c
+		summarizeBy: none
+		sourceColumn: Estatus Key
+
+	column 'Fecha de Creacion'
+		dataType: dateTime
+		formatString: dd/mm/yyyy
+		isAvailableInMdx: false
+		lineageTag: 98060aa2-e199-483a-969d-e13ce2030da9
+		summarizeBy: none
+		sourceColumn: Fecha Creacion Key
+
+	column 'Fecha Liberacion Key'
+		dataType: dateTime
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: d5162853-9caf-41a7-9dd7-6e814180c832
+		summarizeBy: none
+		sourceColumn: Fecha Liberacion Key
+
+	column 'Fecha Cancelacion Key'
+		dataType: dateTime
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: aba38159-fd5c-481c-9725-b96bb0cdd0bf
+		summarizeBy: none
+		sourceColumn: Fecha Cancelacion Key
+
+	column 'Valor Pedido'
+		dataType: decimal
+		isHidden
+		formatString: $#,##0.00
+		lineageTag: 0f81cc1f-130a-4f8b-bb80-403636618ba2
+		summarizeBy: none
+		sourceColumn: Valor Pedido
+
+	column 'Minutos Liberacion'
+		dataType: int64
+		isHidden
+		lineageTag: 6415c1ee-54e9-44b7-beaa-248978132ad5
+		summarizeBy: none
+		sourceColumn: Minutos Liberacion
+
+	column 'Minutos Cancelacion'
+		dataType: int64
+		isHidden
+		lineageTag: 7b9c8a52-71f2-4194-bc89-f814698517d3
+		summarizeBy: none
+		sourceColumn: Minutos Cancelacion
+
+	column 'Indicador Liberado'
+		dataType: boolean
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: 5907656e-29ec-49f9-bd49-65d34cf9ab2e
+		summarizeBy: none
+		sourceColumn: Indicador Liberado
+
+	column 'Indicador Cancelado'
+		dataType: boolean
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: a224342c-1484-4dc1-b758-9eb563327fa2
+		summarizeBy: none
+		sourceColumn: Indicador Cancelado
+
+	column 'Indicador En Pool'
+		dataType: boolean
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: 3cfb5b03-9c3a-48e9-9e1e-e7d2e2a4ac45
+		summarizeBy: none
+		sourceColumn: Indicador En Pool
+
+	column 'Estatus Fue Reconstruido'
+		dataType: boolean
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: dc70b513-942d-4599-bbf9-83a22eaa5c56
+		summarizeBy: none
+		sourceColumn: Estatus Fue Reconstruido
+
+	column 'Usuario No Catalogado'
+		dataType: boolean
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: 30115ef0-24c4-4238-8589-5651bf1df8d7
+		summarizeBy: none
+		sourceColumn: Usuario No Catalogado
+
+	partition Pedidos = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\roman.lopez\Documentos\Claude\Order-Pool-Monitoring-Pipeline\data\gold\fact_pedido_pool.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"pedido", type text}, {"cliente_key", Int64.Type}, {"analista_key", Int64.Type}, {"motivo_key", Int64.Type}, {"estatus_key", Int64.Type}, {"fecha_creacion_key", type date}, {"fecha_liberacion_key", type date}, {"fecha_cancelacion_key", type date}, {"creado_en", type datetime}, {"liberado_fecha", type datetime}, {"cancelado_fecha", type datetime}, {"valor_pedido", Currency.Type}, {"minutos_liberacion", Int64.Type}, {"minutos_cancelacion", Int64.Type}, {"indicador_liberado", type logical}, {"indicador_cancelado", type logical}, {"indicador_en_pool", type logical}, {"estatus_fue_reconstruido", type logical}, {"usuario_no_catalogado", type logical}}),
+				    #"Removed Columns" = Table.RemoveColumns(#"Changed Type",{"creado_en", "liberado_fecha", "cancelado_fecha"}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Removed Columns",{{"pedido", "Pedido"}, {"cliente_key", "Cliente Key"}, {"analista_key", "Analista Key"}, {"motivo_key", "Motivo Key"}, {"estatus_key", "Estatus Key"}, {"fecha_creacion_key", "Fecha Creacion Key"}, {"fecha_liberacion_key", "Fecha Liberacion Key"}, {"fecha_cancelacion_key", "Fecha Cancelacion Key"}, {"valor_pedido", "Valor Pedido"}, {"minutos_liberacion", "Minutos Liberacion"}, {"minutos_cancelacion", "Minutos Cancelacion"}, {"indicador_liberado", "Indicador Liberado"}, {"indicador_cancelado", "Indicador Cancelado"}, {"indicador_en_pool", "Indicador En Pool"}, {"estatus_fue_reconstruido", "Estatus Fue Reconstruido"}, {"usuario_no_catalogado", "Usuario No Catalogado"}})
+				in
+				    #"Renamed Columns"
+

@@ -1,0 +1,6 @@
+estatus_key,estatus
+1,Cancelado
+2,En revision
+3,Liberado
+4,Liberado con excepcion
+5,Retenido

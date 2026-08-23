@@ -1,0 +1,4 @@
+/// Modelo semantico para el monitoreo del pool de credito de pedidos: pedidos bloqueados, liberados y cancelados, y su evolucion diaria.
+database PoolCredito
+	compatibilityLevel: 1702
+

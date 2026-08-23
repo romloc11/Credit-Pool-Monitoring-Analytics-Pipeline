@@ -1,0 +1,37 @@
+/// Analistas que pueden liberar pedidos retenidos en el pool de credito.
+table Analista
+	lineageTag: ed206b42-7d35-436d-8d8e-667338fe45e5
+
+	column 'Analista Key'
+		dataType: int64
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: 7fa62d0a-2569-49e4-9f9c-18e55934d621
+		summarizeBy: none
+		sourceColumn: Analista Key
+
+	column Usuario
+		dataType: string
+		isHidden
+		isAvailableInMdx: false
+		lineageTag: 75785fc6-5921-4d0b-b86a-6b593b924402
+		summarizeBy: none
+		sourceColumn: Usuario
+
+	column 'Nombre del Analista'
+		dataType: string
+		lineageTag: d6e20f5f-6d49-44dd-8181-e1eee724a6c6
+		summarizeBy: none
+		sourceColumn: Nombre del Analista
+
+	partition Analista = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\roman.lopez\Documentos\Claude\Order-Pool-Monitoring-Pipeline\data\gold\dim_analista.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"analista_key", Int64.Type}, {"usuario", type text}, {"nombre", type text}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type",{{"analista_key", "Analista Key"}, {"usuario", "Usuario"}, {"nombre", "Nombre del Analista"}})
+				in
+				    #"Renamed Columns"
+
