@@ -1,9 +1,9 @@
 "use strict";
 /**
  * Genera el proyecto PBIP (PoolCredito.Report + PoolCredito.pbip) a partir
- * del design brief acordado con powerbi-report-design. Determinista: correr
- * de nuevo produce el mismo reporte (salvo los IDs, que son aleatorios pero
- * no afectan el resultado visual).
+ * del diseño acordado para el reporte. Determinista: correr de nuevo produce
+ * el mismo reporte (salvo los IDs, que son aleatorios pero no afectan el
+ * resultado visual).
  *
  * El modelo semantico (PoolCredito.SemanticModel) ya existe -- este script
  * solo escribe la carpeta de Reporte y el .pbip que lo referencia.

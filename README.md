@@ -2,7 +2,7 @@
 
 Pipeline de datos y dashboard para monitorear el pool de crédito de una empresa: pedidos bloqueados por límite de crédito, saldo vencido o bloqueo SAP, y qué tan rápido el equipo de crédito los libera o los cancela.
 
-Este fue uno de mis primeros proyectos con SQL y Power BI, construido originalmente en SQL Server contra un sistema real de la empresa donde trabajo. Lo reconstruí completo — lógica, modelo de datos y reporte — aplicando lo que he aprendido desde entonces en proyectos posteriores (medallion architecture, star schema, DAX). La versión original queda en [`legacy/`](legacy/sql-server-original/) como referencia de dónde partí.
+Este fue uno de mis primeros proyectos con SQL y Power BI, construido originalmente en SQL Server contra un sistema real de la empresa donde trabajo. Lo reconstruí completo — lógica, modelo de datos y reporte — aplicando lo que he aprendido desde entonces en proyectos posteriores (medallion architecture, star schema, DAX).
 
 ## Problema y objetivo
 
