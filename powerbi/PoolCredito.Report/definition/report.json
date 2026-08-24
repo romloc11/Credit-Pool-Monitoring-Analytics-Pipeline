@@ -27,5 +27,20 @@
   "settings": {
     "useStylableVisualContainerHeader": true,
     "useEnhancedTooltips": false
+  },
+  "objects": {
+    "outspacePane": [
+      {
+        "properties": {
+          "expanded": {
+            "expr": {
+              "Literal": {
+                "Value": "false"
+              }
+            }
+          }
+        }
+      }
+    ]
   }
 }
