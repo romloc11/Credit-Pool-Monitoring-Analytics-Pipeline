@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
   "name": "b41bdef74f9c28b0b7b0",
   "position": {
     "x": 1272,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "Calendario.Nombre Mes",
-              "nativeQueryRef": "Nombre Mes"
+              "nativeQueryRef": "Nombre Mes",
+              "active": true
             }
           ]
         }

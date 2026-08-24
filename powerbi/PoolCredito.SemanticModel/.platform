@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "PoolCredito"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "0a05d13e-ee89-49cf-8a8b-2d984a2f4097"
+  }
+}

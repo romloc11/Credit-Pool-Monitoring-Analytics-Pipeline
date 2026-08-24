@@ -68,10 +68,13 @@ table 'Historial Diario del Pool'
 	column 'Fecha Key'
 		dataType: dateTime
 		isHidden
+		formatString: Long Date
 		isAvailableInMdx: false
 		lineageTag: 23125e21-e7ea-4572-bc00-2ce4a8ced775
 		summarizeBy: none
 		sourceColumn: Fecha Key
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column 'Pedidos Nuevos'
 		dataType: int64

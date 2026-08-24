@@ -155,21 +155,29 @@ table Pedidos
 		summarizeBy: none
 		sourceColumn: Fecha Creacion Key
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column 'Fecha Liberacion Key'
 		dataType: dateTime
 		isHidden
+		formatString: Long Date
 		isAvailableInMdx: false
 		lineageTag: d5162853-9caf-41a7-9dd7-6e814180c832
 		summarizeBy: none
 		sourceColumn: Fecha Liberacion Key
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column 'Fecha Cancelacion Key'
 		dataType: dateTime
 		isHidden
+		formatString: Long Date
 		isAvailableInMdx: false
 		lineageTag: aba38159-fd5c-481c-9725-b96bb0cdd0bf
 		summarizeBy: none
 		sourceColumn: Fecha Cancelacion Key
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column 'Valor Pedido'
 		dataType: decimal

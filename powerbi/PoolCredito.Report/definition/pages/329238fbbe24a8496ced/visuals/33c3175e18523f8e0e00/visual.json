@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
   "name": "33c3175e18523f8e0e00",
   "position": {
     "x": 1448,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "Motivo de Bloqueo.Motivo de Bloqueo",
-              "nativeQueryRef": "Motivo de Bloqueo"
+              "nativeQueryRef": "Motivo de Bloqueo",
+              "active": true
             }
           ]
         }

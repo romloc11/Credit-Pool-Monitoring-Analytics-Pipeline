@@ -11,6 +11,8 @@ table Calendario
 		summarizeBy: none
 		sourceColumn: Fecha
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column Anio
 		dataType: int64
 		lineageTag: 165ef647-9d22-4eee-8a1f-4ad787459efb

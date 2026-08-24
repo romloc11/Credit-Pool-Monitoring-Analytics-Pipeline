@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
   "name": "a2bca5fdf235198a0455",
   "position": {
     "x": 1272,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "Analista.Nombre del Analista",
-              "nativeQueryRef": "Nombre del Analista"
+              "nativeQueryRef": "Nombre del Analista",
+              "active": true
             }
           ]
         }
