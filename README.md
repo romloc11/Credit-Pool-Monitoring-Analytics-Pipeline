@@ -1,4 +1,4 @@
-# Order Pool Monitoring Pipeline
+# Order Release Monitoring
 
 Data pipeline and dashboard to monitor a company's credit pool: orders blocked by credit limit, past-due balance, or SAP block, and how fast the credit team releases or cancels them.
 
